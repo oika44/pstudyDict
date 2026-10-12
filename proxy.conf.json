@@ -1,0 +1,11 @@
+{
+  "/weblio": {
+    "target": "https://ejje.weblio.jp",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "info",
+    "pathRewrite": {
+      "^/weblio": "/content"
+    }
+  }
+}
