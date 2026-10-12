@@ -3,6 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { catchError, concatMap, EMPTY, finalize, from, Subscription, tap } from 'rxjs';
 import { WordLookupService, WordNotFoundError } from '../../services/word-lookup.service';
 import { CsvEncoding, PStudyBuilderService } from '../../services/pstudy-builder.service';
+import { DesktopFileService } from '../../services/desktop-file.service';
+
+const SAVE_PATH_KEY = 'pstudy.savePath';
 
 interface FailedWord {
   word: string;
@@ -20,14 +23,33 @@ interface FailedWord {
 export class PstudyComponent {
   private readonly wordLookup = inject(WordLookupService);
   readonly builder = inject(PStudyBuilderService);
+  readonly desktop = inject(DesktopFileService);
 
   inputWords = '';
   fileName = 'pstudy_words';
+  /** デスクトップ版での保存先 (絶対パス) */
+  readonly savePath = signal('');
+  readonly saveMessage = signal<{ error: boolean; text: string } | null>(null);
   encoding: CsvEncoding = 'SJIS';
   readonly progress = signal<{ done: number; total: number } | null>(null);
   readonly failed = signal<FailedWord[]>([]);
   readonly skipped = signal<string[]>([]);
   private running?: Subscription;
+
+  constructor() {
+    if (this.desktop.available) this.initSavePath();
+  }
+
+  /** 前回の保存先を復元し、なければ「ドキュメント/pstudy_words.csv」にする */
+  private async initSavePath(): Promise<void> {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(SAVE_PATH_KEY);
+    } catch {
+      // 保存領域が使えない環境では毎回既定のパスにする
+    }
+    this.savePath.set(saved || (await this.desktop.defaultSavePath()));
+  }
 
   lookup(): void {
     const words = this.parseInput(this.inputWords);
@@ -102,6 +124,33 @@ export class PstudyComponent {
 
   clearAll(): void {
     if (confirm('一覧をすべて削除しますか？')) this.builder.clear();
+  }
+
+  async chooseSavePath(): Promise<void> {
+    const path = await this.desktop.chooseSavePath(this.savePath());
+    if (path) this.savePath.set(path);
+  }
+
+  /** デスクトップ版: 指定の絶対パスに保存する (既存ファイルは確認してから上書き) */
+  async saveCsv(): Promise<void> {
+    const blob = this.builder.exportCsv(this.encoding);
+    let result = await this.desktop.save(this.savePath(), blob);
+    if (!result.ok && result.reason === 'exists') {
+      if (!confirm(`${result.message} は既にあります。上書きしますか？`)) return;
+      result = await this.desktop.save(this.savePath(), blob, true);
+    }
+
+    if (result.ok) {
+      this.savePath.set(result.path);
+      this.saveMessage.set({ error: false, text: `保存しました: ${result.path}` });
+      try {
+        localStorage.setItem(SAVE_PATH_KEY, result.path);
+      } catch {
+        // 次回の初期値に使うだけなので失敗しても構わない
+      }
+    } else {
+      this.saveMessage.set({ error: true, text: result.message });
+    }
   }
 
   downloadCsv(): void {

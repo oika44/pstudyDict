@@ -1,9 +1,11 @@
 // P-Study 単語ファイル作成アプリをデスクトップの小窓 (ウィジェット) として起動する Electron のエントリ
 // - ビルド済みの画面 (dist/pstudy-dict/browser) を独自スキーム app://local/ で配信する
 // - app://local/weblio/<単語> を https://ejje.weblio.jp/content/<単語> に中継する (CORS 回避。server.mjs と同じ役割)
-import { app, BrowserWindow, Menu, net, protocol, screen, shell } from 'electron';
+// - 画面から指定された絶対パスに CSV を保存する (preload.cjs 経由)
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, shell } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, normalize, sep } from 'node:path';
+import { writeFile } from 'node:fs/promises';
+import { extname, isAbsolute, join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = join(import.meta.dirname, '..', 'dist', 'pstudy-dict', 'browser');
@@ -26,6 +28,47 @@ function handleRequest(req) {
   // 不明なパスは画面本体を返す (Angular のルーティング用)
   const target = existsSync(file) && !file.endsWith(sep) ? file : join(ROOT, 'index.html');
   return net.fetch(pathToFileURL(target).toString());
+}
+
+/** 自アプリの画面以外からの呼び出しを拒否する */
+function fromApp(event) {
+  return event.senderFrame?.url.startsWith('app://local/') ?? false;
+}
+
+function registerCsvHandlers() {
+  ipcMain.handle('csv:default-path', () => join(app.getPath('documents'), 'pstudy_words.csv'));
+
+  ipcMain.handle('csv:choose-path', async (event, current) => {
+    if (!fromApp(event)) return null;
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'CSV の保存先',
+      defaultPath: typeof current === 'string' && current ? current : undefined,
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+    });
+    return canceled ? null : filePath;
+  });
+
+  // 戻り値: { ok: true, path } | { ok: false, reason: 'invalid' | 'exists' | 'error', message }
+  ipcMain.handle('csv:save', async (event, path, data, overwrite) => {
+    if (!fromApp(event) || typeof path !== 'string' || !(data instanceof Uint8Array)) {
+      return { ok: false, reason: 'invalid', message: '不正な呼び出しです' };
+    }
+    let file = path.trim();
+    if (!isAbsolute(file)) {
+      return { ok: false, reason: 'invalid', message: '保存先は絶対パスで指定してください' };
+    }
+    // 画面から任意のファイルを書き換えられないよう、書き出しは .csv に限る
+    if (extname(file).toLowerCase() !== '.csv') file += '.csv';
+    try {
+      await writeFile(file, data, { flag: overwrite ? 'w' : 'wx' });
+      return { ok: true, path: file };
+    } catch (err) {
+      if (err.code === 'EEXIST') return { ok: false, reason: 'exists', message: file };
+      if (err.code === 'ENOENT') return { ok: false, reason: 'error', message: `フォルダが存在しません: ${file}` };
+      return { ok: false, reason: 'error', message: `保存に失敗しました (${err.code ?? err.message})` };
+    }
+  });
 }
 
 function loadState() {
@@ -89,7 +132,7 @@ function createWindow() {
     minHeight: 400,
     title: 'P-Study 単語ファイル作成',
     autoHideMenuBar: true, // Alt キーでメニューを表示
-    webPreferences: { sandbox: true },
+    webPreferences: { sandbox: true, preload: join(import.meta.dirname, 'preload.cjs') },
   });
   win.setMenu(buildMenu(win));
   if (process.platform === 'darwin') Menu.setApplicationMenu(buildMenu(win));
@@ -110,6 +153,7 @@ app.whenReady().then(() => {
     return;
   }
   protocol.handle('app', handleRequest);
+  registerCsvHandlers();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

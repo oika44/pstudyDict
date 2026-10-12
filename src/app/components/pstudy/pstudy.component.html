@@ -74,11 +74,22 @@
     <p class="note">まだ登録されていません。</p>
   }
 
+  @if (desktop.available) {
+    <div class="row">
+      <label class="path">
+        保存先（絶対パス）
+        <input [ngModel]="savePath()" (ngModelChange)="savePath.set($event)" placeholder="C:\Users\you\Documents\words.csv" />
+      </label>
+      <button type="button" (click)="chooseSavePath()">参照…</button>
+    </div>
+  }
   <div class="row">
-    <label>
-      ファイル名
-      <input [(ngModel)]="fileName" />.csv
-    </label>
+    @if (!desktop.available) {
+      <label>
+        ファイル名
+        <input [(ngModel)]="fileName" />.csv
+      </label>
+    }
     <label>
       文字コード
       <select [(ngModel)]="encoding">
@@ -86,9 +97,23 @@
         <option value="UTF8">UTF-8</option>
       </select>
     </label>
-    <button type="button" class="primary" (click)="downloadCsv()" [disabled]="builder.count() === 0">
-      CSV ダウンロード
-    </button>
+    @if (desktop.available) {
+      <button
+        type="button"
+        class="primary"
+        (click)="saveCsv()"
+        [disabled]="builder.count() === 0 || !savePath().trim()"
+      >
+        CSV 保存
+      </button>
+    } @else {
+      <button type="button" class="primary" (click)="downloadCsv()" [disabled]="builder.count() === 0">
+        CSV ダウンロード
+      </button>
+    }
     <button type="button" (click)="clearAll()" [disabled]="builder.count() === 0">全削除</button>
   </div>
+  @if (saveMessage(); as m) {
+    <p class="note" [class.error]="m.error">{{ m.text }}</p>
+  }
 </section>

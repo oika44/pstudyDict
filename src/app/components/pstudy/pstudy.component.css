@@ -60,6 +60,17 @@ td {
   vertical-align: top;
 }
 
+label.path {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.note.error {
+  color: #c5221f;
+}
+
 button.primary {
   background: #1a73e8;
   color: #fff;
