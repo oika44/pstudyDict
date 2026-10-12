@@ -27,4 +27,10 @@ describe('PStudyBuilderService', () => {
       '"abandon","捨てる"',
     );
   });
+
+  it('UTF-8 でエンコードする', async () => {
+    service.addEntry('abandon', '捨てる');
+    const text = await service.exportCsv('UTF8').text();
+    expect(text).toBe('"abandon","捨てる"');
+  });
 });

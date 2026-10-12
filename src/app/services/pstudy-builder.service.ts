@@ -1,13 +1,15 @@
 import { Injectable, computed, signal } from '@angular/core';
 import Encoding from 'encoding-japanese';
 
+export type CsvEncoding = 'SJIS' | 'UTF8';
+
 export interface PStudyEntry {
   word: string;
   meaning: string;
 }
 
 /**
- * P-Study System にインポートする問題リストを保持し、CSV (Shift_JIS) を作る。
+ * P-Study System にインポートする問題リストを保持し、CSV (Shift_JIS / UTF-8) を作る。
  * 1 行 = 「問題,解答」 (問題 = 英単語, 解答 = 日本語訳)。
  */
 @Injectable({
@@ -50,9 +52,13 @@ export class PStudyBuilderService {
       .join('\r\n');
   }
 
-  /** Shift_JIS でエンコードした CSV */
-  exportCsv(): Blob {
-    const sjis = Encoding.convert(Encoding.stringToCode(this.toCsv()), {
+  /** 指定の文字コードでエンコードした CSV (既定は Shift_JIS) */
+  exportCsv(encoding: CsvEncoding = 'SJIS'): Blob {
+    const csv = this.toCsv();
+    if (encoding === 'UTF8') {
+      return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    }
+    const sjis = Encoding.convert(Encoding.stringToCode(csv), {
       to: 'SJIS',
       from: 'UNICODE',
     });

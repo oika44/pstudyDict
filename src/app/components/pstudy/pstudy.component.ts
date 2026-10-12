@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, concatMap, EMPTY, finalize, from, Subscription, tap } from 'rxjs';
 import { WordLookupService, WordNotFoundError } from '../../services/word-lookup.service';
-import { PStudyBuilderService } from '../../services/pstudy-builder.service';
+import { CsvEncoding, PStudyBuilderService } from '../../services/pstudy-builder.service';
 
 interface FailedWord {
   word: string;
@@ -23,6 +23,7 @@ export class PstudyComponent {
 
   inputWords = '';
   fileName = 'pstudy_words';
+  encoding: CsvEncoding = 'SJIS';
   readonly progress = signal<{ done: number; total: number } | null>(null);
   readonly failed = signal<FailedWord[]>([]);
   readonly skipped = signal<string[]>([]);
@@ -104,7 +105,7 @@ export class PstudyComponent {
   }
 
   downloadCsv(): void {
-    const blob = this.builder.exportCsv();
+    const blob = this.builder.exportCsv(this.encoding);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

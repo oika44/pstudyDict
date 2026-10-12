@@ -79,8 +79,15 @@
       ファイル名
       <input [(ngModel)]="fileName" />.csv
     </label>
+    <label>
+      文字コード
+      <select [(ngModel)]="encoding">
+        <option value="SJIS">Shift_JIS</option>
+        <option value="UTF8">UTF-8</option>
+      </select>
+    </label>
     <button type="button" class="primary" (click)="downloadCsv()" [disabled]="builder.count() === 0">
-      CSV ダウンロード（Shift_JIS）
+      CSV ダウンロード
     </button>
     <button type="button" (click)="clearAll()" [disabled]="builder.count() === 0">全削除</button>
   </div>
