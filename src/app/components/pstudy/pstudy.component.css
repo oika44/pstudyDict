@@ -1,9 +1,17 @@
 :host {
-  display: block;
+  /* 画面全体を窓の高さに収め、問題リストだけをスクロールさせる */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
   max-width: 900px;
   margin: 0 auto;
   padding: 16px;
   font-family: system-ui, sans-serif;
+}
+
+:host > * {
+  flex: none;
 }
 
 .card {
@@ -16,6 +24,29 @@
 .card.warn {
   border-color: #e0a800;
   background: #fffbea;
+  /* 見つからない単語が多くても問題リストの場所を残す */
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.card.list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 120px;
+  margin-bottom: 0;
+}
+
+.list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
 }
 
 h2 {

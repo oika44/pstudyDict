@@ -41,44 +41,50 @@
   </section>
 }
 
-<section class="card">
+<section class="card list">
   <h2>問題リスト（{{ builder.count() }} 語）</h2>
-  @if (builder.count() > 0) {
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>問題（英単語）</th>
-          <th>解答（訳・編集可）</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (e of builder.entries(); track e.word; let i = $index) {
+  <div class="list-body">
+    @if (builder.count() > 0) {
+      <table>
+        <thead>
           <tr>
-            <td>{{ i + 1 }}</td>
-            <td class="word">{{ e.word }}</td>
-            <td>
-              <textarea
-                rows="2"
-                [ngModel]="e.meaning"
-                (ngModelChange)="builder.updateMeaning(i, $event)"
-              ></textarea>
-            </td>
-            <td><button type="button" (click)="builder.removeEntry(i)">削除</button></td>
+            <th>#</th>
+            <th>問題（英単語）</th>
+            <th>解答（訳・編集可）</th>
+            <th></th>
           </tr>
-        }
-      </tbody>
-    </table>
-  } @else {
-    <p class="note">まだ登録されていません。</p>
-  }
+        </thead>
+        <tbody>
+          @for (e of builder.entries(); track e.word; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              <td class="word">{{ e.word }}</td>
+              <td>
+                <textarea
+                  rows="2"
+                  [ngModel]="e.meaning"
+                  (ngModelChange)="builder.updateMeaning(i, $event)"
+                ></textarea>
+              </td>
+              <td><button type="button" (click)="builder.removeEntry(i)">削除</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="note">まだ登録されていません。</p>
+    }
+  </div>
 
   @if (desktop.available) {
     <div class="row">
       <label class="path">
         保存先（絶対パス）
-        <input [ngModel]="savePath()" (ngModelChange)="savePath.set($event)" placeholder="C:\Users\you\Documents\words.csv" />
+        <input
+          [ngModel]="savePath()"
+          (ngModelChange)="savePath.set($event)"
+          placeholder="C:\Users\you\Documents\words.csv"
+        />
       </label>
       <button type="button" (click)="chooseSavePath()">参照…</button>
     </div>
@@ -107,7 +113,12 @@
         CSV 保存
       </button>
     } @else {
-      <button type="button" class="primary" (click)="downloadCsv()" [disabled]="builder.count() === 0">
+      <button
+        type="button"
+        class="primary"
+        (click)="downloadCsv()"
+        [disabled]="builder.count() === 0"
+      >
         CSV ダウンロード
       </button>
     }
