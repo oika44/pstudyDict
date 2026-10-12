@@ -3,7 +3,7 @@
 // - /weblio/<単語> を https://ejje.weblio.jp/content/<単語> に中継する (ブラウザの CORS 制限を回避するため)
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.PORT ?? 4321);
@@ -35,10 +35,17 @@ async function proxyWeblio(req, res) {
 }
 
 async function serveStatic(req, res) {
-  const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
-  // ROOT の外を読ませない
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  } catch {
+    // 不正な % エンコード (例: /%E0) でサーバが落ちないようにする
+    res.writeHead(400).end();
+    return;
+  }
+  // ROOT の外を読ませない (末尾に区切り文字を付けて app-backup/ のような兄弟フォルダも弾く)
   const file = normalize(join(ROOT, pathname === '/' ? 'index.html' : pathname));
-  if (!file.startsWith(ROOT)) {
+  if (!file.startsWith(ROOT + sep)) {
     res.writeHead(403).end();
     return;
   }
@@ -56,8 +63,13 @@ async function serveStatic(req, res) {
 
 http
   .createServer((req, res) => {
-    if (req.url.startsWith('/weblio/')) return proxyWeblio(req, res);
-    return serveStatic(req, res);
+    const handler = req.url.startsWith('/weblio/') ? proxyWeblio : serveStatic;
+    // 想定外の例外でもプロセスを落とさず 500 を返す
+    handler(req, res).catch((err) => {
+      console.error('リクエスト処理中のエラー:', err);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
   })
   .listen(PORT, '127.0.0.1', () => {
     console.log(`起動しました: http://localhost:${PORT}`);
