@@ -71,3 +71,24 @@ button.primary {
 button.primary:disabled {
   background: #9bbcf0;
 }
+
+/* ウィジェット (小窓) 表示用 */
+@media (max-width: 520px) {
+  :host {
+    padding: 8px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+    margin: 4px 0 12px;
+  }
+
+  .card {
+    padding: 8px 10px;
+  }
+
+  th:first-child,
+  td:first-child {
+    display: none;
+  }
+}
