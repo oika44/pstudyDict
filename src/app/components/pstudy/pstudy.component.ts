@@ -1,8 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, concatMap, EMPTY, finalize, from, Subscription, tap } from 'rxjs';
 import { WordLookupService, WordNotFoundError } from '../../services/word-lookup.service';
-import { CsvEncoding, PStudyBuilderService } from '../../services/pstudy-builder.service';
+import {
+  AudioPaths,
+  CsvEncoding,
+  PStudyBuilderService,
+} from '../../services/pstudy-builder.service';
 import { DesktopFileService } from '../../services/desktop-file.service';
 
 const SAVE_PATH_KEY = 'pstudy.savePath';
@@ -30,7 +34,12 @@ export class PstudyComponent {
   /** デスクトップ版での保存先 (絶対パス) */
   readonly savePath = signal('');
   readonly saveMessage = signal<{ error: boolean; text: string } | null>(null);
+  readonly saving = signal(false);
+  /** デスクトップ版: CSV と一緒に単語の発音 (MP3) を保存し、wavfile 列にパスを書く */
+  withAudio = true;
   encoding: CsvEncoding = 'SJIS';
+  /** 発音記号 (IPA) は Shift_JIS にない文字を含むので、その場合に注意を出す */
+  readonly hasPronunciation = computed(() => this.builder.entries().some((e) => e.pronunciation));
   readonly progress = signal<{ done: number; total: number } | null>(null);
   readonly failed = signal<FailedWord[]>([]);
   readonly skipped = signal<string[]>([]);
@@ -80,7 +89,13 @@ export class PstudyComponent {
 
   private lookupOne(word: string) {
     return this.wordLookup.lookup(word).pipe(
-      tap((res) => this.builder.addEntry(res.word, res.meaning)),
+      tap((res) =>
+        this.builder.addEntry(res.word, res.meaning, {
+          example: res.example,
+          pronunciation: res.pronunciation,
+          audioUrl: res.audioUrl,
+        }),
+      ),
       catchError((err) => {
         const reason = err instanceof WordNotFoundError ? '辞書に見つかりません' : '通信エラー';
         this.failed.update((list) => [...list, { word, reason, meaning: '' }]);
@@ -133,7 +148,39 @@ export class PstudyComponent {
 
   /** デスクトップ版: 指定の絶対パスに保存する (既存ファイルは確認してから上書き) */
   async saveCsv(): Promise<void> {
-    const blob = this.builder.exportCsv(this.encoding);
+    this.saving.set(true);
+    try {
+      await this.saveCsvWithAudio();
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  private async saveCsvWithAudio(): Promise<void> {
+    let audioPaths: AudioPaths = {};
+    let audioNote = '';
+    if (this.withAudio) {
+      const items = this.builder
+        .entries()
+        .filter((e) => e.audioUrl)
+        .map((e) => ({ word: e.word, url: e.audioUrl }));
+      if (items.length > 0) {
+        this.saveMessage.set({ error: false, text: `音声を保存中… (${items.length} 件)` });
+        const audio = await this.desktop.saveAudio(this.savePath(), items);
+        if (!audio.ok) {
+          this.saveMessage.set({ error: true, text: audio.message });
+          return;
+        }
+        audioPaths = audio.paths;
+      }
+      const missing = this.builder.entries().filter((e) => !audioPaths[e.word]).length;
+      if (missing > 0) audioNote = `（音声なし: ${missing} 語）`;
+    }
+
+    const blob = this.builder.exportCsv(this.encoding, {
+      title: csvTitle(this.savePath()),
+      audioPaths,
+    });
     let result = await this.desktop.save(this.savePath(), blob);
     if (!result.ok && result.reason === 'exists') {
       if (!confirm(`${result.message} は既にあります。上書きしますか？`)) return;
@@ -142,7 +189,7 @@ export class PstudyComponent {
 
     if (result.ok) {
       this.savePath.set(result.path);
-      this.saveMessage.set({ error: false, text: `保存しました: ${result.path}` });
+      this.saveMessage.set({ error: false, text: `保存しました: ${result.path}${audioNote}` });
       try {
         localStorage.setItem(SAVE_PATH_KEY, result.path);
       } catch {
@@ -154,7 +201,7 @@ export class PstudyComponent {
   }
 
   downloadCsv(): void {
-    const blob = this.builder.exportCsv(this.encoding);
+    const blob = this.builder.exportCsv(this.encoding, { title: this.fileName });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -162,4 +209,9 @@ export class PstudyComponent {
     a.click();
     URL.revokeObjectURL(url);
   }
+}
+
+/** 問題集の名称にする CSV のファイル名: C:\words\list.csv → list */
+function csvTitle(path: string): string {
+  return (path.split(/[\\/]/).pop() ?? '').replace(/\.csv$/i, '');
 }

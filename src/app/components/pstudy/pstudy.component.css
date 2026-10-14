@@ -60,6 +60,17 @@ textarea {
   font: inherit;
 }
 
+td.extra input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+td.extra input + input {
+  margin-top: 4px;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

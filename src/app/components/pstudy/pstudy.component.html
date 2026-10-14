@@ -49,8 +49,9 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>問題（英単語）</th>
-            <th>解答（訳・編集可）</th>
+            <th>解答（英単語）</th>
+            <th>問題（訳・編集可）</th>
+            <th>解説（例文）・発音記号（編集可）</th>
             <th></th>
           </tr>
         </thead>
@@ -63,8 +64,20 @@
                 <textarea
                   rows="2"
                   [ngModel]="e.meaning"
-                  (ngModelChange)="builder.updateMeaning(i, $event)"
+                  (ngModelChange)="builder.updateEntry(i, { meaning: $event })"
                 ></textarea>
+              </td>
+              <td class="extra">
+                <input
+                  [ngModel]="e.example"
+                  (ngModelChange)="builder.updateEntry(i, { example: $event })"
+                  placeholder="例文"
+                />
+                <input
+                  [ngModel]="e.pronunciation"
+                  (ngModelChange)="builder.updateEntry(i, { pronunciation: $event })"
+                  placeholder="発音記号"
+                />
               </td>
               <td><button type="button" (click)="builder.removeEntry(i)">削除</button></td>
             </tr>
@@ -104,11 +117,15 @@
       </select>
     </label>
     @if (desktop.available) {
+      <label title="CSV と同じ場所の「CSV名_voice」フォルダに MP3 を保存し、wavfile 列にそのパスを書きます">
+        <input type="checkbox" [(ngModel)]="withAudio" />
+        発音の音声も保存
+      </label>
       <button
         type="button"
         class="primary"
         (click)="saveCsv()"
-        [disabled]="builder.count() === 0 || !savePath().trim()"
+        [disabled]="builder.count() === 0 || !savePath().trim() || saving()"
       >
         CSV 保存
       </button>
@@ -124,6 +141,9 @@
     }
     <button type="button" (click)="clearAll()" [disabled]="builder.count() === 0">全削除</button>
   </div>
+  @if (encoding === 'SJIS' && hasPronunciation()) {
+    <p class="note error">Shift_JIS では発音記号の一部（ə、ˈ など）が「?」になります。UTF-8 を選んでください。</p>
+  }
   @if (saveMessage(); as m) {
     <p class="note" [class.error]="m.error">{{ m.text }}</p>
   }

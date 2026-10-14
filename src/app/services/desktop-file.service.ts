@@ -4,11 +4,16 @@ export type SaveResult =
   | { ok: true; path: string }
   | { ok: false; reason: 'invalid' | 'exists' | 'error'; message: string };
 
+export type SaveAudioResult =
+  | { ok: true; paths: Record<string, string>; failed: string[] }
+  | { ok: false; message: string };
+
 /** electron/preload.cjs が公開する API */
 interface PstudyDesktopApi {
   defaultSavePath(): Promise<string>;
   chooseSavePath(current: string): Promise<string | null>;
   saveFile(path: string, data: Uint8Array, overwrite: boolean): Promise<SaveResult>;
+  saveAudio(csvPath: string, items: { word: string; url: string }[]): Promise<SaveAudioResult>;
 }
 
 declare global {
@@ -44,6 +49,14 @@ export class DesktopFileService {
   async save(path: string, blob: Blob, overwrite = false): Promise<SaveResult> {
     const data = new Uint8Array(await blob.arrayBuffer());
     return this.required().saveFile(path, data, overwrite);
+  }
+
+  /**
+   * 単語の音声 (MP3) を CSV と同じ場所の「<CSV名>_voice」フォルダに保存する。
+   * 戻り値の paths は 単語 → 保存したファイルの絶対パス
+   */
+  saveAudio(csvPath: string, items: { word: string; url: string }[]): Promise<SaveAudioResult> {
+    return this.required().saveAudio(csvPath, items);
   }
 
   private required(): PstudyDesktopApi {

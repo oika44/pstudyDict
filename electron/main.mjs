@@ -2,10 +2,11 @@
 // - ビルド済みの画面 (dist/pstudy-dict/browser) を独自スキーム app://local/ で配信する
 // - app://local/weblio/<単語> を https://ejje.weblio.jp/content/<単語> に中継する (CORS 回避。server.mjs と同じ役割)
 // - 画面から指定された絶対パスに CSV を保存する (preload.cjs 経由)
+// - Weblio の単語の発音 (MP3) を CSV と同じ場所の「<CSV名>_voice」フォルダに保存する
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, shell } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
-import { extname, isAbsolute, join, normalize, sep } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, isAbsolute, join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = join(import.meta.dirname, '..', 'dist', 'pstudy-dict', 'browser');
@@ -35,6 +36,34 @@ function fromApp(event) {
   return event.senderFrame?.url.startsWith('app://local/') ?? false;
 }
 
+/** 画面から渡された CSV の保存先を検証し、.csv で終わる絶対パスにする。不正なら null */
+function csvTarget(path) {
+  if (typeof path !== 'string') return null;
+  const file = path.trim();
+  if (!isAbsolute(file)) return null;
+  // 画面から任意のファイルを書き換えられないよう、書き出しは .csv に限る
+  return extname(file).toLowerCase() === '.csv' ? file : file + '.csv';
+}
+
+/** 音声の保存先: C:\words\list.csv → C:\words\list_voice */
+function audioDir(csvFile) {
+  return join(dirname(csvFile), basename(csvFile, extname(csvFile)) + '_voice');
+}
+
+/** "give up" → "give_up.mp3"。ファイル名に使えない文字は _ にする */
+function audioFileName(word) {
+  return word.trim().replace(/[^\w.'-]+/g, '_') + '.mp3';
+}
+
+function isWeblioAudio(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && u.hostname === 'cdn.weblio.jp' && u.pathname.endsWith('.mp3');
+  } catch {
+    return false;
+  }
+}
+
 function registerCsvHandlers() {
   ipcMain.handle('csv:default-path', () => join(app.getPath('documents'), 'pstudy_words.csv'));
 
@@ -54,12 +83,10 @@ function registerCsvHandlers() {
     if (!fromApp(event) || typeof path !== 'string' || !(data instanceof Uint8Array)) {
       return { ok: false, reason: 'invalid', message: '不正な呼び出しです' };
     }
-    let file = path.trim();
-    if (!isAbsolute(file)) {
+    const file = csvTarget(path);
+    if (!file) {
       return { ok: false, reason: 'invalid', message: '保存先は絶対パスで指定してください' };
     }
-    // 画面から任意のファイルを書き換えられないよう、書き出しは .csv に限る
-    if (extname(file).toLowerCase() !== '.csv') file += '.csv';
     try {
       await writeFile(file, data, { flag: overwrite ? 'w' : 'wx' });
       return { ok: true, path: file };
@@ -68,6 +95,42 @@ function registerCsvHandlers() {
       if (err.code === 'ENOENT') return { ok: false, reason: 'error', message: `フォルダが存在しません: ${file}` };
       return { ok: false, reason: 'error', message: `保存に失敗しました (${err.code ?? err.message})` };
     }
+  });
+
+  // items: [{ word, url }]。Weblio に負荷をかけないよう 1 件ずつ取得し、保存済みのファイルは取り直さない
+  // 戻り値: { ok: true, paths: { 単語: 絶対パス }, failed: [単語] } | { ok: false, message }
+  ipcMain.handle('audio:save', async (event, csvPath, items) => {
+    if (!fromApp(event) || !Array.isArray(items)) return { ok: false, message: '不正な呼び出しです' };
+    const csvFile = csvTarget(csvPath);
+    if (!csvFile) return { ok: false, message: '保存先は絶対パスで指定してください' };
+    if (!existsSync(dirname(csvFile))) return { ok: false, message: `フォルダが存在しません: ${csvFile}` };
+    const dir = audioDir(csvFile);
+    try {
+      await mkdir(dir, { recursive: true });
+    } catch (err) {
+      return { ok: false, message: `音声の保存フォルダを作れません (${err.code ?? err.message})` };
+    }
+
+    const paths = {};
+    const failed = [];
+    for (const { word, url } of items) {
+      if (typeof word !== 'string' || !word.trim() || !isWeblioAudio(url)) {
+        failed.push(String(word));
+        continue;
+      }
+      const file = join(dir, audioFileName(word));
+      try {
+        if (!existsSync(file)) {
+          const res = await net.fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          await writeFile(file, Buffer.from(await res.arrayBuffer()));
+        }
+        paths[word] = file;
+      } catch {
+        failed.push(word);
+      }
+    }
+    return { ok: true, paths, failed };
   });
 }
 
