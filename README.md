@@ -76,6 +76,8 @@ ng build ─▶ dist/pstudy-dict/browser/ ─┬─▶ portable/make-zip.sh ─�
                                         └─▶ electron-builder     ─▶ dist/widget/*.deb, *.zip（Node.js 不要）
 ```
 
+ビルドの手順は [docs/BUILD.md](docs/BUILD.md) にまとめてある。
+
 electron-builder の設定は `package.json` の `build` にまとめてある。アプリに含めるのは画面のビルドと `electron/` だけで、`node_modules` は含めない。
 
 - Windows のインストーラー形式（`npm run dist:win-installer`）は、Windows 上か Wine のある環境でないと作れない。
