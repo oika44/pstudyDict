@@ -85,7 +85,6 @@ electron-builder の設定は `package.json` の `build` にまとめてある�
 
 - `LoggerService` はどこからも使っていない。
 - `app.routes.ts` のルートは空で、Router は使っていない。
-- `package.json` のバージョンが `0.0.0` のままで、配布ファイル名がタグ `v0.5.0-beta` と合っていない。
 
 ---
 

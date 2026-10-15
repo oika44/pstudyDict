@@ -1,6 +1,6 @@
 {
   "name": "pstudy-dict",
-  "version": "0.0.0",
+  "version": "0.6.0-beta.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -60,6 +60,7 @@
         "zip"
       ],
       "signAndEditExecutable": false,
+      "executableName": "pstudy-dict",
       "artifactName": "${productName}-Windows-${version}.${ext}"
     },
     "nsis": {
@@ -69,7 +70,7 @@
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "portable": {
-      "artifactName": "${productName}-Portable-${version}.${ext}"
+      "artifactName": "pstudy-dict.exe"
     },
     "linux": {
       "target": [
