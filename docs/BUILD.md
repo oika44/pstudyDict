@@ -94,3 +94,30 @@ gh release create v0.6.0-beta.2 --prerelease --title "ベータ 0.6 (2)" --notes
 `gh` を使うには、先に `sudo apt install gh` と `gh auth login` が必要。
 
 古いバージョンの成果物は `dist/widget/` に残るので、ビルドの前に消しておくと取り違えない。
+
+## 6. Windows でビルドする場合
+
+Windows 版は Windows 上でもビルドできる。Wine は不要。
+
+準備として Node.js 24（npm 11 が付属）と Git for Windows を入れ、PowerShell で次を実行する。
+
+```powershell
+git clone git@github.com:oika44/pstudyDict.git
+cd pstudyDict
+npm ci
+```
+
+ビルドは 2 行に分けて実行する。
+
+```powershell
+npx ng build
+npx electron-builder --win zip portable
+```
+
+`dist\widget\` に `pstudy-dict.exe` と `PStudyDict-Windows-<version>.zip` ができる。`npm run dist:win` と `npm run dist:win-installer` もそのまま使える。
+
+補足:
+
+- Windows PowerShell 5.1 は `&&` に対応していないので、4 章の `npx ng build && npx electron-builder ...` はエラーになる。2 行に分けるか、PowerShell 7 かコマンドプロンプトを使う。
+- zip 配布版の `npm run package` は `sh portable/make-zip.sh` を実行するので、`sh` と `zip` コマンドが必要。Git Bash などで使えるようにしてから実行する。
+- Linux 版（.deb）は Windows では作れない。Linux か WSL で作る。
