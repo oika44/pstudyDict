@@ -1,0 +1,150 @@
+<h1>P-Study 用 単語ファイル作成 <small class="version">v{{ version }}</small></h1>
+
+<section class="card">
+  <label for="words">調べる英単語（1行に1語。カンマ区切りも可）</label>
+  <textarea
+    id="words"
+    [(ngModel)]="inputWords"
+    rows="6"
+    placeholder="abandon&#10;give up&#10;running"
+    [disabled]="!!progress()"
+  ></textarea>
+  <div class="row">
+    @if (progress(); as p) {
+      <span>検索中… {{ p.done }} / {{ p.total }}</span>
+      <button type="button" (click)="cancel()">中止</button>
+    } @else {
+      <button type="button" class="primary" (click)="lookup()" [disabled]="!inputWords.trim()">
+        Weblio で検索して追加
+      </button>
+    }
+  </div>
+
+  @if (skipped().length > 0) {
+    <p class="note">登録済みのためスキップ: {{ skipped().join(', ') }}</p>
+  }
+</section>
+
+@if (failed().length > 0) {
+  <section class="card warn">
+    <h2>見つからなかった単語</h2>
+    <p class="note">綴りを確認して再検索するか、訳を手入力して追加してください。</p>
+    @for (f of failed(); track f.word) {
+      <div class="row">
+        <strong class="word">{{ f.word }}</strong>
+        <span class="note">{{ f.reason }}</span>
+        <input [(ngModel)]="f.meaning" placeholder="訳を手入力" />
+        <button type="button" (click)="addManual(f)" [disabled]="!f.meaning.trim()">追加</button>
+        <button type="button" (click)="dismissFailed(f)">無視</button>
+      </div>
+    }
+  </section>
+}
+
+<section class="card list">
+  <h2>問題リスト（{{ builder.count() }} 語）</h2>
+  <div class="list-body">
+    @if (builder.count() > 0) {
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>解答（英単語）</th>
+            <th>問題（訳・編集可）</th>
+            <th>解説（例文）・発音記号（編集可）</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of builder.entries(); track e.word; let i = $index) {
+            <tr>
+              <td>{{ i + 1 }}</td>
+              <td class="word">{{ e.word }}</td>
+              <td>
+                <textarea
+                  rows="2"
+                  [ngModel]="e.meaning"
+                  (ngModelChange)="builder.updateEntry(i, { meaning: $event })"
+                ></textarea>
+              </td>
+              <td class="extra">
+                <input
+                  [ngModel]="e.example"
+                  (ngModelChange)="builder.updateEntry(i, { example: $event })"
+                  placeholder="例文"
+                />
+                <input
+                  [ngModel]="e.pronunciation"
+                  (ngModelChange)="builder.updateEntry(i, { pronunciation: $event })"
+                  placeholder="発音記号"
+                />
+              </td>
+              <td><button type="button" (click)="builder.removeEntry(i)">削除</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="note">まだ登録されていません。</p>
+    }
+  </div>
+
+  @if (desktop.available) {
+    <div class="row">
+      <label class="path">
+        保存先（絶対パス）
+        <input
+          [ngModel]="savePath()"
+          (ngModelChange)="savePath.set($event)"
+          placeholder="C:\Users\you\Documents\words.csv"
+        />
+      </label>
+      <button type="button" (click)="chooseSavePath()">参照…</button>
+    </div>
+  }
+  <div class="row">
+    @if (!desktop.available) {
+      <label>
+        ファイル名
+        <input [(ngModel)]="fileName" />.csv
+      </label>
+    }
+    <label>
+      文字コード
+      <select [(ngModel)]="encoding">
+        <option value="SJIS">Shift_JIS</option>
+        <option value="UTF8">UTF-8</option>
+      </select>
+    </label>
+    @if (desktop.available) {
+      <label title="CSV と同じ場所の「CSV名_voice」フォルダに MP3 を保存し、wavfile 列にそのパスを書きます">
+        <input type="checkbox" [(ngModel)]="withAudio" />
+        発音の音声も保存
+      </label>
+      <button
+        type="button"
+        class="primary"
+        (click)="saveCsv()"
+        [disabled]="builder.count() === 0 || !savePath().trim() || saving()"
+      >
+        CSV 保存
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="primary"
+        (click)="downloadCsv()"
+        [disabled]="builder.count() === 0"
+      >
+        CSV ダウンロード
+      </button>
+    }
+    <button type="button" (click)="clearAll()" [disabled]="builder.count() === 0">全削除</button>
+  </div>
+  @if (encoding === 'SJIS' && hasPronunciation()) {
+    <p class="note error">Shift_JIS では発音記号の一部（ə、ˈ など）が「?」になります。UTF-8 を選んでください。</p>
+  }
+  @if (saveMessage(); as m) {
+    <p class="note" [class.error]="m.error">{{ m.text }}</p>
+  }
+</section>

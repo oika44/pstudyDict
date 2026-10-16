@@ -1,0 +1,153 @@
+:host {
+  /* 画面全体を窓の高さに収め、問題リストだけをスクロールさせる */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: system-ui, sans-serif;
+}
+
+:host > * {
+  flex: none;
+}
+
+.version {
+  font-size: 0.8rem;
+  font-weight: normal;
+  color: #888;
+}
+
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.card.warn {
+  border-color: #e0a800;
+  background: #fffbea;
+  /* 見つからない単語が多くても問題リストの場所を残す */
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.card.list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 120px;
+  margin-bottom: 0;
+}
+
+.list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 8px;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+td.extra input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+td.extra input + input {
+  margin-top: 4px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.note {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.word {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #eee;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+label.path {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.note.error {
+  color: #c5221f;
+}
+
+button.primary {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+}
+
+button.primary:disabled {
+  background: #9bbcf0;
+}
+
+/* ウィジェット (小窓) 表示用 */
+@media (max-width: 520px) {
+  :host {
+    padding: 8px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+    margin: 4px 0 12px;
+  }
+
+  .card {
+    padding: 8px 10px;
+  }
+
+  th:first-child,
+  td:first-child {
+    display: none;
+  }
+}
