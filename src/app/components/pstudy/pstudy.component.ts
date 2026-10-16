@@ -8,6 +8,7 @@ import {
   PStudyBuilderService,
 } from '../../services/pstudy-builder.service';
 import { DesktopFileService } from '../../services/desktop-file.service';
+import { version } from '../../../../package.json';
 
 const SAVE_PATH_KEY = 'pstudy.savePath';
 
@@ -28,6 +29,8 @@ export class PstudyComponent {
   private readonly wordLookup = inject(WordLookupService);
   readonly builder = inject(PStudyBuilderService);
   readonly desktop = inject(DesktopFileService);
+  /** package.json の version */
+  readonly version = version;
 
   inputWords = '';
   fileName = 'pstudy_words';
