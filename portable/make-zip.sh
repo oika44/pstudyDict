@@ -3,7 +3,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-npx ng build
+npm run build
 
 rm -rf release
 mkdir -p release/pstudy-dict

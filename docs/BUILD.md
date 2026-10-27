@@ -1,6 +1,6 @@
 # ビルドと配布物の作り方
 
-配布物は次の 4 種類。どれも最初に `ng build` で画面をビルドし、`dist/pstudy-dict/browser/` を中身として使う。
+配布物は次の 4 種類。どれも最初に `npm run build` で画面をビルドし、`dist/pstudy-dict/browser/` を中身として使う。
 
 | 配布物 | できるファイル | 使う側に必要なもの |
 |---|---|---|
@@ -35,20 +35,22 @@ npm run widget     # Electron のデスクトップ版として起動
 
 Linux で `npm run widget` が sandbox のエラーで起動しないときは、`npx electron . --no-sandbox` で起動する。
 
-## 3. バージョンを上げる
+## 3. バージョン
 
-配布ファイル名とタグに使うので、ビルドの前に上げておく。
+`npm run build` を実行するたびに、`prebuild` で `scripts/bump-version.mjs` が動き、マイナー番号が 1 上がる（例: `0.6.0-beta.1` → `0.7.0-beta.1`）。パッチは 0 に戻り、`-beta.N` はそのまま残る。`package.json` と `package-lock.json` の両方が変わる。
 
-```bash
-npm version 0.6.0-beta.2 --no-git-tag-version   # package.json と package-lock.json の両方が変わる
-```
+`npm run widget`・`npm run dist:*`・`npm run package` は中で `npm run build` を呼ぶので、これらでも上がる。`npm run watch` は開始時に 1 回上がる。`npm start` と `npm test` では上がらない。
+
+- `npx ng build` を直接実行すると上がらない。ビルドは `npm run` 経由で行う。
+- ビルドに失敗しても番号は上がったままになる。
+- 番号を自分で決めたいときは `npm version 1.0.0-beta.1 --no-git-tag-version` のように設定する。次の `npm run build` でそこから 1 上がる。
 
 ## 4. ビルド
 
 ### Windows 版
 
 ```bash
-npx ng build && npx electron-builder --win zip portable
+npm run dist:win-all
 ```
 
 `pstudy-dict.exe`（1 ファイル）と `PStudyDict-Windows-<version>.zip`（フォルダ形式）の両方ができる。片方だけでよい場合:
@@ -82,13 +84,15 @@ npm run package
 
 `dist/` と `release/` は Git の管理外。配布物は GitHub の Releases に添付する。
 
-```bash
-git commit -am "バージョンを 0.6.0-beta.2 にする"
-git tag -a v0.6.0-beta.2 -m "ベータ 0.6 (2)"
-git push origin master v0.6.0-beta.2
+ビルドで上がったバージョン（例: `0.7.0-beta.1`）をコミットしてタグを付ける。
 
-gh release create v0.6.0-beta.2 --prerelease --title "ベータ 0.6 (2)" --notes "変更点" \
-  dist/widget/pstudy-dict.exe dist/widget/PStudyDict-Windows-0.6.0-beta.2.zip
+```bash
+git commit -am "バージョンを 0.7.0-beta.1 にする"
+git tag -a v0.7.0-beta.1 -m "ベータ 0.7 (1)"
+git push origin master v0.7.0-beta.1
+
+gh release create v0.7.0-beta.1 --prerelease --title "ベータ 0.7 (1)" --notes "変更点" \
+  dist/widget/pstudy-dict.exe dist/widget/PStudyDict-Windows-0.7.0-beta.1.zip
 ```
 
 `gh` を使うには、先に `sudo apt install gh` と `gh auth login` が必要。
@@ -107,17 +111,16 @@ cd pstudyDict
 npm ci
 ```
 
-ビルドは 2 行に分けて実行する。
+ビルドする。
 
 ```powershell
-npx ng build
-npx electron-builder --win zip portable
+npm run dist:win-all
 ```
 
 `dist\widget\` に `pstudy-dict.exe` と `PStudyDict-Windows-<version>.zip` ができる。`npm run dist:win` と `npm run dist:win-installer` もそのまま使える。
 
 補足:
 
-- Windows PowerShell 5.1 は `&&` に対応していないので、4 章の `npx ng build && npx electron-builder ...` はエラーになる。2 行に分けるか、PowerShell 7 かコマンドプロンプトを使う。
+- npm のスクリプトはコマンドプロンプトで実行されるので、Windows PowerShell 5.1 から `npm run` しても中の `&&` は動く。PowerShell 5.1 で `&&` を自分で入力するとエラーになる。
 - zip 配布版の `npm run package` は `sh portable/make-zip.sh` を実行するので、`sh` と `zip` コマンドが必要。Git Bash などで使えるようにしてから実行する。
 - Linux 版（.deb）は Windows では作れない。Linux か WSL で作る。
