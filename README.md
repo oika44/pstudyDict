@@ -31,7 +31,7 @@
 | ファイル | 役割 |
 |---|---|
 | `main.ts` → `app.ts` | アプリを起動し、`<app-pstudy>` を 1 つ置くだけの入口 |
-| `components/pstudy/` | 画面本体。入力欄、検索中の表示、見つからなかった単語、問題リスト、保存欄 |
+| `components/pstudy/` | 画面本体。入力欄、検索中の表示、見つからなかった単語、問題リスト、保存欄。問題リストでは、発音の音声がある単語の横に 🔊 ボタンを出し、押すとその MP3 を鳴らす（`playAudio()`） |
 | `services/word-lookup.service.ts` | `/weblio/<単語>` の HTML を受け取り、`<meta name="description">` から訳を（`parseWeblioMeaning`）、本文から発音記号（`parseWeblioPronunciation`）、先頭の例文（`parseWeblioExample`）、単語の発音の MP3 の URL（`parseWeblioAudioUrl`）を取り出す。見つからないときは `WordNotFoundError` を返す |
 | `services/pstudy-builder.service.ts` | 問題リストを signal で持つ。追加・重複チェック・編集・削除と、CSV の作成（Shift_JIS / UTF-8）を担当。CSV は PssEditor が書き出すのと同じ PSS インポート可能形式（1 行目 `psscsvfile,100`、2 行目が問題集名、3 行目は空行、4 行目が列配置 `a1..a5,q1..q10,h1..h10,d1..d10,wavfile,qvoicefile,imagefile,url`）。a1 = 英単語、q1 = 訳、d1 = 例文、d2 = 発音記号、wavfile = 単語の発音の音声ファイルの絶対パス（デスクトップ版のみ）。空欄は引用符を付けない |
 | `services/desktop-file.service.ts` | Electron の preload が用意する `window.pstudyDesktop` を包むサービス。ブラウザ版では `available` が `false` になる |
@@ -43,6 +43,8 @@
 2. 登録済みの単語は「スキップ」として表示する。
 3. 残りを `concatMap` で 1 語ずつ順番に問い合わせる（Weblio に負荷をかけないため）。
 4. 見つかった単語は一覧に追加し、見つからない単語は「見つからなかった単語」欄に回して手入力で追加できるようにする。
+
+**発音の再生**（`PstudyComponent.playAudio()`）：検索で取り出した MP3 の URL（`cdn.weblio.jp`）を `Audio` で直接再生する。音声の再生は CORS の制限を受けないので中継役を通さず、3 つの起動方法のどれでも同じように動く。連打しても音が重ならないよう、前の再生を止めてから鳴らす。再生できなかったときは保存欄の下にメッセージを出す。熟語など音声のない単語にはボタンを出さない。
 
 **状態の持ち方**：Angular 22 の Zoneless モードで動いているため、画面に表示する状態は signal で持つ。普通のプロパティを `await` のあとで書き換えても画面に反映されない。
 
