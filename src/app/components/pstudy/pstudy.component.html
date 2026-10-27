@@ -59,7 +59,20 @@
           @for (e of builder.entries(); track e.word; let i = $index) {
             <tr>
               <td>{{ i + 1 }}</td>
-              <td class="word">{{ e.word }}</td>
+              <td class="word">
+                {{ e.word }}
+                @if (e.audioUrl) {
+                  <button
+                    type="button"
+                    class="play"
+                    (click)="playAudio(e.audioUrl)"
+                    title="発音を聞く"
+                    attr.aria-label="{{ e.word }} の発音を聞く"
+                  >
+                    🔊
+                  </button>
+                }
+              </td>
               <td>
                 <textarea
                   rows="2"

@@ -95,6 +95,16 @@ td.extra input + input {
   white-space: nowrap;
 }
 
+button.play {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

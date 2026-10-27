@@ -47,6 +47,8 @@ export class PstudyComponent {
   readonly failed = signal<FailedWord[]>([]);
   readonly skipped = signal<string[]>([]);
   private running?: Subscription;
+  /** 発音の再生用。連打したときに音が重ならないよう 1 つを使い回す */
+  private player?: HTMLAudioElement;
 
   constructor() {
     if (this.desktop.available) this.initSavePath();
@@ -138,6 +140,15 @@ export class PstudyComponent {
     this.inputWords = this.parseInput(this.inputWords)
       .filter((w) => w.toLowerCase() !== f.word.toLowerCase())
       .join('\n');
+  }
+
+  /** 単語の発音 (Weblio の MP3) を鳴らす */
+  playAudio(url: string): void {
+    this.player?.pause();
+    this.player = new Audio(url);
+    this.player.play().catch(() => {
+      this.saveMessage.set({ error: true, text: '発音を再生できませんでした' });
+    });
   }
 
   clearAll(): void {
