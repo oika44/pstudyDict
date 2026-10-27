@@ -51,3 +51,6 @@ Thumbs.db
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Claude Code の MCP 設定（プロジェクト）
+/.mcp.json
